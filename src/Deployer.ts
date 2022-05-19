@@ -8,6 +8,8 @@ import fs from 'fs'
 import path from 'path'
 import crypto from 'crypto'
 import AnyTransaction from 'algosdk/dist/types/src/types/transactions'
+import { redeemOnAlgorand } from "@certusone/wormhole-sdk";
+import { WORMHOLE_ALGORAND_BRIDGE_ID_TESTNET, WORMHOLE_ALGORAND_TOKEN_BRIDGE_ID_TESTNET } from './Environment'
 
 export enum FieldType {
     UINT = 1,
@@ -128,7 +130,7 @@ export class Deployer {
             const txIndexes: number[] = []
             const logicSigned: Uint8Array[] = []
             const txsToSign: Transaction[] = []
-            for(let i=0; i<transactions.length; i++) {
+            for(let i = 0; i < transactions.length; i++) {
                 const sender = encodeAddress(transactions[i].from.publicKey)
                 const lsig = stateless.get(sender)
                 if (lsig) {
@@ -144,7 +146,7 @@ export class Deployer {
             let logicIndex = 0
             let txsIndex = 0
             const signed: Uint8Array[] = []
-            for(let i=0; i<txIndexes.length; i++) {
+            for(let i = 0; i < txIndexes.length; i++) {
                 signed.push(txIndexes[i]===0 ? logicSigned[logicIndex++] : txSigned[txsIndex++])
             }
 
@@ -261,7 +263,7 @@ export class Deployer {
                         })
                         return `${pc}: ${disassembly[line]} | ${stackMsg}`
                     }).join('\n')
-                    
+
                     const msg = msgHeader + '\n' + msgBody
                     console.log(msg)
                 } else {
@@ -733,5 +735,16 @@ export class Deployer {
         Deployer.tealCache.set(pytealSourceFile, results)
 
         return results
+    }
+
+    async createRedeemWormholeTransactions(vaa: Uint8Array, sender: string): Promise<Transaction[]> {
+        return (await redeemOnAlgorand(
+            this.algodClient,
+            WORMHOLE_ALGORAND_TOKEN_BRIDGE_ID_TESTNET,
+            WORMHOLE_ALGORAND_BRIDGE_ID_TESTNET,
+            vaa,
+            sender
+          )).map(pair => pair.tx);
+
     }
 }

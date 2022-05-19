@@ -44,3 +44,11 @@ export const LOCAL_CONFIG: TestExecutionEnvironmentConfig = {
         mnemonic: "kitchen laugh type script swamp sweet shell century shock gospel usual assist again merge pretty exact fork repair program catalog observe gentle arrest ability office"
     }
 }
+
+export const WORMHOLE_ALGORAND_BRIDGE_ID_MAINNET = BigInt("0")
+export const WORMHOLE_ALGORAND_BRIDGE_ID_TESTNET = BigInt("86525623")
+export const WORMHOLE_ALGORAND_BRIDGE_ID_DEVNET  = BigInt("4")
+
+export const WORMHOLE_ALGORAND_TOKEN_BRIDGE_ID_MAINNET = BigInt("0")
+export const WORMHOLE_ALGORAND_TOKEN_BRIDGE_ID_TESTNET = BigInt("86525641")
+export const WORMHOLE_ALGORAND_TOKEN_BRIDGE_ID_DEVNET  = BigInt("6")

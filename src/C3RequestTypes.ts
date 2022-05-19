@@ -28,7 +28,7 @@ type CEDelegationSupportedRequest = {
     primaryAccount?: Address
 }
 
-export type CEDepositRequest = { op: C3RequestOp.CE_Deposit, performOptIn?: boolean } & CESingleAssetRequest
+export type CEDepositRequest = { op: C3RequestOp.CE_Deposit, performOptIn?: boolean, wormholeVAA?: Uint8Array } & CESingleAssetRequest
 export type CEWithdrawRequest = { op: C3RequestOp.CE_Withdraw } & CESingleAssetRequest
 export type CELendRequest = { op: C3RequestOp.CE_Lend } & CESingleAssetRequest & CEDelegationSupportedRequest
 export type CERedeemRequest = { op: C3RequestOp.CE_Redeem } & CESingleAssetRequest & CEDelegationSupportedRequest
@@ -75,14 +75,13 @@ export type C3Request = CEDepositRequest | CERequest | DelegationRequest
 export type PreparedDepositRequest = CESingleAssetRequest & {
     op: C3RequestOp.CE_Deposit
     from: Address,
-    data: Transaction,
-    signed: string
+    data: Transaction[],
+    signed: string,
 }
 
-// FIXME: Move this back to request types.
-// FIXME: Add endpoint for getting opt-in state1
 export type UserProxyRequest = {
     from: Address,
+		// FIXME: This is a higher-order property that should be in a higher-order structure
     isDelegated: boolean, // Not all operations may support delegation, so this field may be ignored.
     proxyAddress: Address,
     appId: AppId,

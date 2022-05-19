@@ -16,7 +16,7 @@ import { TealSignCallback } from "./Order";
 import {Address, AssetId, CERequest, ContractIds, DelegationRequest, UserProxyRequest, SignedUserProxyRequest} from "./types";
 
 export const PROXY_BYTECODE_CHUNKS = [
-    "062003010006311024124000010031192212311B231210400100224000010031102412443102311B2209C01A5740081712443104311B2209C01A574808171244310F311816503102165031041650310650311916503120503105503500233501311B22093502340134020C40009A223501311D22083502340134020C400077223501313322083502340134020C40005323350131313502340134020C4000313400311B2209C01A5700408020",
+    "062003010006311024124000010031192212311b231210400104224000010031102412443102311b2209c01a5740081712443104311b2209c01a574808171244310f31181650310216503104165031065031191650312050310550310116503500233501311b22093502340134020c40009a223501311d22083502340134020c400077223501313322083502340134020c40005323350131313502340134020c4000313400311b2209c01a5700408020",
     "0444224334003401C0301650350034012208350142FFB434003401C0321650350034012208350142FF9234003401C01C50350034012208350142FF6F34003401C01A50350034012208350142FF4C23381022124423380881C09A0C0F442338008020",
     "1244228008",
     "88002081028008",
@@ -99,10 +99,11 @@ export class UserProxy {
             args.firstValid,
             args.lastValid,
             args.lease,
+            args.from,
         ]))
 
         const callTx = await this.deployer.makeCallTransaction(
-            args.from,
+            this.address(),
             args.appId,
             args.appOnComplete,
             [...args.args, extraData],
@@ -124,50 +125,64 @@ export class UserProxy {
     }
 
     // TODO: Merge all the prepare/generate functions to have one public API function that handles all C3 operations
-    public async generateDepositGroup(req: CEDepositRequest): Promise<[Transaction[], number]> {
-        const depositTxns = [
-            req.assetId === 0
-                ? await this.deployer.makePayTransaction(this.user, encodeApplicationAddress(this.contracts.ceOnchain), req.amount, 0)
-                : await this.deployer.makeAssetTransferTransaction(this.user, encodeApplicationAddress(this.contracts.ceOnchain), req.assetId, req.amount, 0),
-            await this.deployer.makeCallTransaction(this.server, this.contracts.ceOnchain, OnApplicationComplete.NoOpOC, ["deposit"], [this.user, this.address()], [], [], "", 2 * this.deployer.minFee)
-        ]
-
-        let payIndex = 0
-
+    public async generateDepositGroup(req: CEDepositRequest): Promise<[Transaction[], number, number]> {
+        const allTxns: Transaction[] = []
         if (req.performOptIn) {
-            const optInTxns = [
+            // Transactions required for the Initial Deposit
+            allTxns.push(
                 await this.deployer.makePayTransaction(this.server, this.address(), BigInt(2_050_000), 4 * this.deployer.minFee),
                 await this.deployer.makeCallTransaction(this.address(), this.contracts.lendingPool, OnApplicationComplete.OptInOC, [], [], [], [], "", 0),
                 await this.deployer.makeCallTransaction(this.address(), this.contracts.ceOnchain, OnApplicationComplete.OptInOC, [], [], [], [], "", 0),
                 await this.deployer.makeCallTransaction(this.address(), this.contracts.ade, OnApplicationComplete.OptInOC, [], [], [], [], "", 0),
-            ]
+            )
+        }
 
-            depositTxns.unshift(...optInTxns)
-            payIndex = optInTxns.length
+        // Application call to perform de Deposit Operation
+        allTxns.push(await this.deployer.makeCallTransaction(this.server, this.contracts.ceOnchain, OnApplicationComplete.NoOpOC, ["deposit"], [this.user, this.address()], [], [], "", 2 * this.deployer.minFee))
+
+        // Funds transfer transactions
+        // Funds can come from an Algorand User, using a Payment or an Asset Transfer transaction
+        //   or from Whormhole by claming a VAA through a set of transactions created by the Whormhole's SDK
+        const firstFundsTransferIndex = allTxns.length
+        let transactionToSignIndex = 0
+        if (req.wormholeVAA) {
+            const wormholeTxns: Transaction[] = await this.deployer.createRedeemWormholeTransactions(
+                req.wormholeVAA,
+                encodeApplicationAddress(this.contracts.ceOnchain))
+            allTxns.push(...wormholeTxns)
+        } else {
+            allTxns.push(
+                req.assetId === 0
+                    ? await this.deployer.makePayTransaction(this.user, encodeApplicationAddress(this.contracts.ceOnchain), req.amount, 0)
+                    : await this.deployer.makeAssetTransferTransaction(this.user, encodeApplicationAddress(this.contracts.ceOnchain), req.assetId, req.amount, 0)
+            )
+            transactionToSignIndex = firstFundsTransferIndex
         }
 
         // PLEASE NOTE: Removed call to assignGroupID from this place because we might need to manipulate depositTxns further outside of this function.
         //  For instance, in the server side of deposits, we might want to change firstRound and lastRound to match the ones provided in the signed user's transaction.
 
-        return [depositTxns, payIndex]
+        return [allTxns, firstFundsTransferIndex, transactionToSignIndex]
     }
 
     public async prepareDeposit(req: CEDepositRequest): Promise<PreparedDepositRequest> {
         // TODO: it makes no sense to receive a CERequest here as the only valid operation is C3RequestOp.CE_Deposit
-        const [txns, index] = await this.generateDepositGroup(req)
+        const [txns, startDataIndex, transactionToSignIndex] = await this.generateDepositGroup(req)
         const grouped = assignGroupID(txns)
         if (grouped === undefined || grouped.length === 0) {
             throw new Error('Could not assign a group ID to the payment transaction')
         }
 
-        const signed = await this.signCallback([grouped[index]])
+        const signed = transactionToSignIndex > 0
+            ? encodeBase64((await this.signCallback([grouped[transactionToSignIndex]]))[0]) // User Signature
+            : ''
         return {
             op: C3RequestOp.CE_Deposit,
             from: this.user,
             assetId: req.assetId,
             amount: req.amount,
-            data: grouped[index],
-            signed: encodeBase64(signed[0])
+            data: grouped.slice(startDataIndex),
+            signed
         }
     }
 
@@ -188,6 +203,7 @@ export class UserProxy {
                 if (req.assetId !== 0) {
                     foreignAssets.push(req.assetId)
                 }
+                accounts.push(this.user)
                 break
             }
             case C3RequestOp.CE_Liquidate: {
@@ -268,7 +284,7 @@ export class UserProxy {
             fee: 0,
             firstValid: params.firstRound,
             lastValid: params.lastRound,
-            lease: crypto.randomBytes(32),
+            lease: new Uint8Array(crypto.randomBytes(32)),
             rekeyTo: zeroAddress,
             txNote: "",
             ...assigns
@@ -285,10 +301,9 @@ export class UserProxy {
             req.lastValid,
             req.lease,
             req.appOnComplete,
-            req.rekeyTo,
+            decodeAddress(req.rekeyTo).publicKey,
             req.txNote,
-            // FIXME: Include fee in contract
-            //req.fee,
+            req.fee,
             ...req.args,
             ...req.accounts.map(x => decodeAddress(x).publicKey),
             ...req.foreignApps,
