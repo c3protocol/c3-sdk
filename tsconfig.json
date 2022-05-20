@@ -1,10 +1,19 @@
 {
-    "extends": "../../tsconfig.json",
     "include": ["./src/**/*"],
     "exclude": ["node_modules", "out"],
     "compilerOptions": {
       "rootDir": "./src",
       "outDir": "./out",
-      "composite": true
+      "composite": true,
+      "target": "es6",
+      "module": "commonjs",
+      "moduleResolution": "node",
+      "incremental": true,
+      "strict": true,
+      "esModuleInterop": true,
+      "sourceMap": true,
+      "skipLibCheck": true,
+      "forceConsistentCasingInFileNames": true,
+      "noUnusedLocals": true
     }
   }
