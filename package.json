@@ -5,6 +5,7 @@
   "main": "out/C3Sdk.js",
   "types": "out/C3Sdk.d.ts",
   "scripts": {
+    "prepare": "npm run pretest",
     "pretest": "tsc --build",
     "test": "jest",
     "lint": "eslint . --ext .ts",
