@@ -16,7 +16,8 @@
   "license": "ISC",
   "dependencies": {
     "algosdk": "^1.13.1",
-    "node-fetch": "^2.6.7"
+    "node-fetch": "^2.6.7",
+    "@certusone/wormhole-sdk": "^0.3.3"
   },
   "devDependencies": {
     "@types/jest": "^26.0.14",
