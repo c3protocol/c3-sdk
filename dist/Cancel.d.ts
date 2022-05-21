@@ -1,0 +1,16 @@
+import { Address, Amount, AssetId, ServerOrder, SignedOrder } from "./types";
+import { Deployer } from './Deployer';
+import { CancelledOrder, CancelData, SignedCancel } from './types';
+import { TealSignCallback } from "./Order";
+import { LogicSigAccount } from "algosdk";
+import { MerkleTree } from "./MerkleTree";
+export declare function makeCancelData(user: Address, have_id: AssetId, have_amount: Amount, order_proxy: Address): CancelData;
+export declare function makeCancelDataFromOrder(deployer: Deployer, matcher_id: number, order: SignedOrder): Promise<CancelData>;
+export declare function compileCancel(deployer: Deployer, matcher_id: number, server: Address): Promise<LogicSigAccount>;
+export declare function signCancel(data: CancelData, proxy_address: Address, server_address: Address, tealSignCallback: TealSignCallback): Promise<SignedCancel>;
+export declare function encodeCancelData(data: CancelData, includeType?: boolean): Uint8Array;
+export declare function decodeCancelData(data: Uint8Array, includeType?: boolean): CancelData;
+export declare function encodeSignedCancel(data: SignedCancel, includeType?: boolean): Uint8Array;
+export declare function decodeSignedCancel(data: Uint8Array, includeType?: boolean): SignedCancel;
+export declare function encodeCancelledOrder(data: CancelledOrder, includeType?: boolean): Uint8Array;
+export declare function decodeCancelledOrder(data: Uint8Array, tree: MerkleTree<ServerOrder>, includeType?: boolean): Promise<CancelledOrder>;
