@@ -8,7 +8,7 @@ import { Signer } from "./Signer"
     const signer: Signer = new Signer()
     const sdk: C3Sdk = await connectC3(
         "https://beta-api.c3.io/",
-        "https://node.testnet.algoexplorerapi.io", 80, "",
+        "https://node.testnet.algoexplorerapi.io", 443, "",
         signer.callback,
         signer.tealCallback)
     const assets = await sdk.getAssets()
