@@ -13,10 +13,19 @@ import { C3RequestOp, CEDepositRequest, PreparedDepositRequest } from "./C3Reque
 import {Deployer, SignCallback} from "./Deployer";
 import {AlgorandType, IPackedInfo, concatArrays, packData, decodeBase16, encodeApplicationAddress, encodeArgArray, encodeC3PyTealDictionary, encodeBase64, encodeUint64} from "./Encoding";
 import { TealSignCallback } from "./Order";
-import {Address, AssetId, CERequest, ContractIds, DelegationRequest, UserProxyRequest, SignedUserProxyRequest} from "./types";
+import {
+    Address,
+    AssetId,
+    CERequest,
+    ContractIds,
+    DelegationRequest,
+    UserProxyRequest,
+    SignedUserProxyRequest,
+    AppId
+} from "./types";
 
 export const PROXY_BYTECODE_CHUNKS = [
-    "062003010006311024124000010031192212311B231210400100224000010031102412443102311B2209C01A5740081712443104311B2209C01A574808171244310F311816503102165031041650310650311916503120503105503500233501311B22093502340134020C40009A223501311D22083502340134020C400077223501313322083502340134020C40005323350131313502340134020C4000313400311B2209C01A5700408020",
+    "062003010006311024124000010031192212311b231210400104224000010031102412443102311b2209c01a5740081712443104311b2209c01a574808171244310f31181650310216503104165031065031191650312050310550310116503500233501311b22093502340134020c40009a223501311d22083502340134020c400077223501313322083502340134020c40005323350131313502340134020c4000313400311b2209c01a5700408020",
     "0444224334003401C0301650350034012208350142FFB434003401C0321650350034012208350142FF9234003401C01C50350034012208350142FF6F34003401C01A50350034012208350142FF4C23381022124423380881C09A0C0F442338008020",
     "1244228008",
     "88002081028008",
@@ -99,10 +108,11 @@ export class UserProxy {
             args.firstValid,
             args.lastValid,
             args.lease,
+            args.from,
         ]))
 
         const callTx = await this.deployer.makeCallTransaction(
-            args.from,
+            this.address(),
             args.appId,
             args.appOnComplete,
             [...args.args, extraData],
@@ -176,6 +186,7 @@ export class UserProxy {
     public async prepareCEOp(req: CERequest): Promise<SignedUserProxyRequest> {
         let args: AlgorandType[] = [req.op, decodeAddress(this.user).publicKey]
         let accounts: Address[] = [this.address()]
+        let foreignApps: AppId[] = []
         const foreignAssets: AssetId[] = []
 
         switch (req.op) {
@@ -188,6 +199,7 @@ export class UserProxy {
                 if (req.assetId !== 0) {
                     foreignAssets.push(req.assetId)
                 }
+                accounts.push(this.user)
                 break
             }
             case C3RequestOp.CE_Liquidate: {
@@ -218,6 +230,7 @@ export class UserProxy {
 
                 args = ["verify", ...args]        // ADE call.
                 accounts = [...accounts, primaryProxy.address()]
+                foreignApps.push(this.contracts.ceOnchain)
                 isDelegated = true
             } else {
                 throw new Error('Invalid Primary account specified for delegation')
@@ -230,7 +243,7 @@ export class UserProxy {
             appId,
             args,
             accounts,
-            foreignApps: [this.contracts.priceKeeper, this.contracts.priceMapper, this.contracts.rateOracle, this.contracts.lendingPool],
+            foreignApps: [...foreignApps, this.contracts.priceKeeper, this.contracts.priceMapper, this.contracts.rateOracle, this.contracts.lendingPool],
             foreignAssets,
         })
         const signData = await this.signCallData(proxyRequest)
@@ -268,7 +281,7 @@ export class UserProxy {
             fee: 0,
             firstValid: params.firstRound,
             lastValid: params.lastRound,
-            lease: crypto.randomBytes(32),
+            lease: new Uint8Array(crypto.randomBytes(32)),
             rekeyTo: zeroAddress,
             txNote: "",
             ...assigns
@@ -285,10 +298,9 @@ export class UserProxy {
             req.lastValid,
             req.lease,
             req.appOnComplete,
-            req.rekeyTo,
+            decodeAddress(req.rekeyTo).publicKey,
             req.txNote,
-            // FIXME: Include fee in contract
-            //req.fee,
+            req.fee,
             ...req.args,
             ...req.accounts.map(x => decodeAddress(x).publicKey),
             ...req.foreignApps,

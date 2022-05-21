@@ -79,10 +79,9 @@ export type PreparedDepositRequest = CESingleAssetRequest & {
     signed: string
 }
 
-// FIXME: Move this back to request types.
-// FIXME: Add endpoint for getting opt-in state1
 export type UserProxyRequest = {
     from: Address,
+		// FIXME: This is a higher-order property that should be in a higher-order structure
     isDelegated: boolean, // Not all operations may support delegation, so this field may be ignored.
     proxyAddress: Address,
     appId: AppId,

@@ -128,7 +128,7 @@ export class Deployer {
             const txIndexes: number[] = []
             const logicSigned: Uint8Array[] = []
             const txsToSign: Transaction[] = []
-            for(let i=0; i<transactions.length; i++) {
+            for(let i = 0; i < transactions.length; i++) {
                 const sender = encodeAddress(transactions[i].from.publicKey)
                 const lsig = stateless.get(sender)
                 if (lsig) {
@@ -144,7 +144,7 @@ export class Deployer {
             let logicIndex = 0
             let txsIndex = 0
             const signed: Uint8Array[] = []
-            for(let i=0; i<txIndexes.length; i++) {
+            for(let i = 0; i < txIndexes.length; i++) {
                 signed.push(txIndexes[i]===0 ? logicSigned[logicIndex++] : txSigned[txsIndex++])
             }
 
