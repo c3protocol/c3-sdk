@@ -2,8 +2,8 @@
   "name": "c3-sdk",
   "version": "0.1.0",
   "description": "",
-  "main": "out/C3Sdk.js",
-  "types": "out/C3Sdk.d.ts",
+  "main": "dist/C3Sdk.js",
+  "types": "dist/C3Sdk.d.ts",
   "scripts": {
     "prepare": "npm run pretest",
     "pretest": "tsc --build",
