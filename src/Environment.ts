@@ -24,7 +24,7 @@ export type TestExecutionEnvironmentConfig = ExecutionEnvironmentConfig & {
 }
 
 export const BETANET_CONFIG: TestExecutionEnvironmentConfig = {
-    algod: {token: "", server: "https://node.betanet.algoexplorerapi.io", port: ""},
+    algod: {token: "", server: "https://api.betanet.algoexplorer.io", port: ""},
     masterAccount: {
         mnemonic: "rate firm prefer portion innocent public large original fit shoulder solve scorpion battle end jealous off pause inner toddler year grab chaos result about capital"
     }

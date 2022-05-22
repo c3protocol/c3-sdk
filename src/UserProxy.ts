@@ -13,16 +13,7 @@ import { C3RequestOp, CEDepositRequest, PreparedDepositRequest } from "./C3Reque
 import {Deployer, SignCallback} from "./Deployer";
 import {AlgorandType, IPackedInfo, concatArrays, packData, decodeBase16, encodeApplicationAddress, encodeArgArray, encodeC3PyTealDictionary, encodeBase64, encodeUint64} from "./Encoding";
 import { TealSignCallback } from "./Order";
-import {
-    Address,
-    AssetId,
-    CERequest,
-    ContractIds,
-    DelegationRequest,
-    UserProxyRequest,
-    SignedUserProxyRequest,
-    AppId
-} from "./types";
+import {Address, AssetId, CERequest, ContractIds, DelegationRequest, UserProxyRequest, SignedUserProxyRequest} from "./types";
 
 export const PROXY_BYTECODE_CHUNKS = [
     "062003010006311024124000010031192212311b231210400104224000010031102412443102311b2209c01a5740081712443104311b2209c01a574808171244310f31181650310216503104165031065031191650312050310550310116503500233501311b22093502340134020c40009a223501311d22083502340134020c400077223501313322083502340134020c40005323350131313502340134020c4000313400311b2209c01a5700408020",
@@ -191,7 +182,8 @@ export class UserProxy {
             assetId: req.assetId,
             amount: req.amount,
             data: grouped.slice(startDataIndex),
-            signed
+            signed,
+            wormholeVAA: req.wormholeVAA
         }
     }
 
@@ -200,7 +192,6 @@ export class UserProxy {
     public async prepareCEOp(req: CERequest): Promise<SignedUserProxyRequest> {
         let args: AlgorandType[] = [req.op, decodeAddress(this.user).publicKey]
         let accounts: Address[] = [this.address()]
-        let foreignApps: AppId[] = []
         const foreignAssets: AssetId[] = []
 
         switch (req.op) {
@@ -244,7 +235,6 @@ export class UserProxy {
 
                 args = ["verify", ...args]        // ADE call.
                 accounts = [...accounts, primaryProxy.address()]
-                foreignApps.push(this.contracts.ceOnchain)
                 isDelegated = true
             } else {
                 throw new Error('Invalid Primary account specified for delegation')
@@ -257,7 +247,7 @@ export class UserProxy {
             appId,
             args,
             accounts,
-            foreignApps: [...foreignApps, this.contracts.priceKeeper, this.contracts.priceMapper, this.contracts.rateOracle, this.contracts.lendingPool],
+            foreignApps: [this.contracts.priceKeeper, this.contracts.priceMapper, this.contracts.rateOracle, this.contracts.lendingPool],
             foreignAssets,
         })
         const signData = await this.signCallData(proxyRequest)

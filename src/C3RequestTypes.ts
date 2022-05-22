@@ -77,6 +77,7 @@ export type PreparedDepositRequest = CESingleAssetRequest & {
     from: Address,
     data: Transaction[],
     signed: string,
+    wormholeVAA?: Uint8Array
 }
 
 export type UserProxyRequest = {
