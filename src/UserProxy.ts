@@ -1,4 +1,5 @@
 /* eslint-disable no-case-declarations */
+import { TransactionSignerPair } from "@certusone/wormhole-sdk/lib/cjs/algorand";
 import algosdk, {
     assignGroupID,
     decodeAddress,
@@ -125,7 +126,7 @@ export class UserProxy {
     }
 
     // TODO: Merge all the prepare/generate functions to have one public API function that handles all C3 operations
-    public async generateDepositGroup(req: CEDepositRequest): Promise<[Transaction[], number, number]> {
+    public async generateDepositGroup(req: CEDepositRequest): Promise<[Transaction[], number, number, (((txn: Transaction) => Promise<Uint8Array>)|undefined)[]]> {
         const allTxns: Transaction[] = []
         if (req.performOptIn) {
             // Transactions required for the Initial Deposit
@@ -145,11 +146,16 @@ export class UserProxy {
         //   or from Whormhole by claming a VAA through a set of transactions created by the Whormhole's SDK
         const firstFundsTransferIndex = allTxns.length
         let transactionToSignIndex = 0
+        let wormholeSigners: (((txn: Transaction) => Promise<Uint8Array>)|undefined)[] = []
         if (req.wormholeVAA) {
-            const wormholeTxns: Transaction[] = await this.deployer.createRedeemWormholeTransactions(
+            const wormholeTxns: TransactionSignerPair[] = await this.deployer.createRedeemWormholeTransactions(
                 req.wormholeVAA,
-                encodeApplicationAddress(this.contracts.ceOnchain))
-            allTxns.push(...wormholeTxns)
+                this.server)
+            const ceCallTxn: Transaction = wormholeTxns[wormholeTxns.length-1].tx
+            const firstParam: Uint8Array = ceCallTxn.appArgs && ceCallTxn.appArgs.length>0 ? ceCallTxn.appArgs[0] : new Uint8Array([])
+            ceCallTxn.appArgs = [firstParam, ...encodeArgArray([req.assetId, req.amount])]
+            allTxns.push(...wormholeTxns.map(tx => tx.tx))
+            wormholeSigners = wormholeTxns.map(tx => tx.signer?.signTxn)
         } else {
             allTxns.push(
                 req.assetId === 0
@@ -162,12 +168,12 @@ export class UserProxy {
         // PLEASE NOTE: Removed call to assignGroupID from this place because we might need to manipulate depositTxns further outside of this function.
         //  For instance, in the server side of deposits, we might want to change firstRound and lastRound to match the ones provided in the signed user's transaction.
 
-        return [allTxns, firstFundsTransferIndex, transactionToSignIndex]
+        return [allTxns, firstFundsTransferIndex, transactionToSignIndex, wormholeSigners]
     }
 
     public async prepareDeposit(req: CEDepositRequest): Promise<PreparedDepositRequest> {
         // TODO: it makes no sense to receive a CERequest here as the only valid operation is C3RequestOp.CE_Deposit
-        const [txns, startDataIndex, transactionToSignIndex] = await this.generateDepositGroup(req)
+        const [txns, startDataIndex, transactionToSignIndex, ] = await this.generateDepositGroup(req)
         const grouped = assignGroupID(txns)
         if (grouped === undefined || grouped.length === 0) {
             throw new Error('Could not assign a group ID to the payment transaction')

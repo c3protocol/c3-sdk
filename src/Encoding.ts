@@ -97,7 +97,7 @@ export function packFormat(format: IPackedInfo): Uint8Array {
 
 export function unpackFormat(data: Uint8Array): IPackedInfo {
     let index = 0
-    
+
     // Decode field count
     const fieldCount = data[index]
     index++
@@ -528,7 +528,7 @@ export function encodeApplicationAddress(id: number): Address {
 }
 
 export function compareArrays(a: Uint8Array[], b: Uint8Array[]) {
-    return a.length === b.length && a.reduce((equal, item, index) => equal && item===b[index], true)
+    return (a===undefined || b===undefined) ? a===b : (a.length === b.length && a.reduce((equal, item, index) => equal && item===b[index], true))
 }
 
 function getDelta(response: any, key: string): any | undefined {

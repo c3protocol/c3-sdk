@@ -10,6 +10,7 @@ import crypto from 'crypto'
 import AnyTransaction from 'algosdk/dist/types/src/types/transactions'
 import { redeemOnAlgorand } from "@certusone/wormhole-sdk";
 import { WORMHOLE_ALGORAND_BRIDGE_ID_TESTNET, WORMHOLE_ALGORAND_TOKEN_BRIDGE_ID_TESTNET } from './Environment'
+import { TransactionSignerPair } from '@certusone/wormhole-sdk/lib/cjs/algorand'
 
 export enum FieldType {
     UINT = 1,
@@ -737,14 +738,14 @@ export class Deployer {
         return results
     }
 
-    async createRedeemWormholeTransactions(vaa: Uint8Array, sender: string): Promise<Transaction[]> {
-        return (await redeemOnAlgorand(
+    async createRedeemWormholeTransactions(vaa: Uint8Array, sender: string): Promise<TransactionSignerPair[]> {
+        const redeemTransactions: TransactionSignerPair[] = await redeemOnAlgorand(
             this.algodClient,
             WORMHOLE_ALGORAND_TOKEN_BRIDGE_ID_TESTNET,
             WORMHOLE_ALGORAND_BRIDGE_ID_TESTNET,
-            vaa,
+            new Uint8Array(vaa),
             sender
-          )).map(pair => pair.tx);
-
+        )
+        return redeemTransactions
     }
 }
