@@ -151,9 +151,6 @@ export class UserProxy {
             const wormholeTxns: TransactionSignerPair[] = await this.deployer.createRedeemWormholeTransactions(
                 req.wormholeVAA,
                 this.server)
-            const ceCallTxn: Transaction = wormholeTxns[wormholeTxns.length-1].tx
-            const firstParam: Uint8Array = ceCallTxn.appArgs && ceCallTxn.appArgs.length>0 ? ceCallTxn.appArgs[0] : new Uint8Array([])
-            ceCallTxn.appArgs = [firstParam, ...encodeArgArray([req.assetId, req.amount])]
             allTxns.push(...wormholeTxns.map(tx => tx.tx))
             wormholeSigners = wormholeTxns.map(tx => tx.signer?.signTxn)
         } else {
